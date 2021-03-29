@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package protos;
+
+option go_package = "/proto";
+
+service RolesService {
+    rpc Get (RolesGetRequest) returns (RolesGetResponse) {
+    };
+}
+
+message RolesGetRequest {
+    string role_id = 1;
+}
+
+message RolesGetResponse {
+    Role role = 1;
+}
+
+message Role {
+    string id = 1;
+    int32 priority = 2;
+    bool transient = 3;
+    string color = 4;
+    repeated string permissions = 5;
+}
