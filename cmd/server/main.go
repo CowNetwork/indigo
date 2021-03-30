@@ -43,6 +43,13 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+
+	// TODO
+	// dao:
+	// - select roles
+	// - insert roles
+	// - modify role permissions
+	// -> important: why does protoc-gen-go_rpc not work?
 }
 
 func getEnvOrDefault(env string, def string) string {

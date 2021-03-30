@@ -5,16 +5,42 @@ package protos;
 option go_package = "/proto";
 
 service RolesService {
-    rpc Get (RolesGetRequest) returns (RolesGetResponse) {
-    };
+    rpc Get (StringValue) returns (Role) {
+    }
+
+    rpc Insert (Role) returns (BoolValue) {
+    }
+
+    rpc ListPermission (StringValue) returns (RolesListPermissionResponse) {
+    }
+
+    rpc AddPermission (RolePermissionBinding) returns (BoolValue) {
+    }
+
+    rpc RemovePermission (RolePermissionBinding) returns (BoolValue) {
+    }
 }
 
-message RolesGetRequest {
+message StringValue {
+    string value = 1;
+}
+
+message BoolValue {
+    bool value = 1;
+}
+
+message RolesAddPermissionRequest {
     string role_id = 1;
+    string permission = 2;
 }
 
-message RolesGetResponse {
-    Role role = 1;
+message RolesRemovePermissionRequest {
+    string role_id = 1;
+    string permission = 2;
+}
+
+message RolesListPermissionResponse {
+    repeated RolePermissionBinding bindings = 1;
 }
 
 message Role {
@@ -23,4 +49,9 @@ message Role {
     bool transient = 3;
     string color = 4;
     repeated string permissions = 5;
+}
+
+message RolePermissionBinding {
+    string role_id = 1;
+    string permission = 2;
 }
