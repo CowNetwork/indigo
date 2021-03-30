@@ -11,9 +11,6 @@ service RolesService {
     rpc Insert (Role) returns (BoolValue) {
     }
 
-    rpc ListPermission (StringValue) returns (RolesListPermissionResponse) {
-    }
-
     rpc AddPermission (RolePermissionBinding) returns (BoolValue) {
     }
 

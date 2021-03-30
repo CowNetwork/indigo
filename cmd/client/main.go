@@ -4,6 +4,8 @@ import (
 	"context"
 	pb "github.com/cownetwork/indigo/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"log"
 )
 
@@ -15,12 +17,39 @@ func main() {
 	defer conn.Close()
 
 	client := pb.NewRolesServiceClient(conn)
-	role, err := client.Get(context.Background(), &pb.RolesGetRequest{
-		RoleId: "minecraft_player",
+	role, err := client.Get(context.Background(), &pb.StringValue{
+		Value: "minecraft_player",
 	})
-	if err != nil {
-		log.Fatalf("failed to dial: %v", err)
+
+	st, ok := status.FromError(err)
+	if !ok {
+		log.Fatalf("failed to get role: %v", err)
 	}
 
-	log.Println(role)
+	if st.Code() != codes.OK {
+		// insert
+		_, err := client.Insert(context.Background(), &pb.Role{
+			Id:        "minecraft_player",
+			Priority:  1,
+			Transient: false,
+			Color:     "6699ff",
+		})
+
+		if err != nil {
+			log.Fatalf("failed to insert role: %v", err)
+		}
+		log.Println("Inserted role.")
+	} else {
+		log.Println(role)
+	}
+
+	_, err = client.AddPermission(context.Background(), &pb.RolePermissionBinding{
+		RoleId:     "minecraft_player",
+		Permission: "bukkit.command.help",
+	})
+	if err != nil {
+		log.Fatalf("failed to add permission: %v", err)
+	}
+	log.Println("Added permission.")
+
 }
