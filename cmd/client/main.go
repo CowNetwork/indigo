@@ -43,9 +43,12 @@ func main() {
 		log.Println(role)
 	}
 
-	_, err = client.AddPermission(context.Background(), &pb.RolePermissionBinding{
-		RoleId:     "minecraft_player",
-		Permission: "bukkit.command.help",
+	_, err = client.AddPermission(context.Background(), &pb.RolesAddPermissionRequest{
+		RoleId: "minecraft_player",
+		Permissions: []string{
+			"bukkit.command.help",
+			"bukkit.command.gamemode",
+		},
 	})
 	if err != nil {
 		log.Fatalf("failed to add permission: %v", err)

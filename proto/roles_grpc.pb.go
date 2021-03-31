@@ -20,9 +20,8 @@ const _ = grpc.SupportPackageIsVersion7
 type RolesServiceClient interface {
 	Get(ctx context.Context, in *StringValue, opts ...grpc.CallOption) (*Role, error)
 	Insert(ctx context.Context, in *Role, opts ...grpc.CallOption) (*BoolValue, error)
-	ListPermissions(ctx context.Context, in *StringValue, opts ...grpc.CallOption) (*RolesListPermissionResponse, error)
-	AddPermission(ctx context.Context, in *RolePermissionBinding, opts ...grpc.CallOption) (*BoolValue, error)
-	RemovePermission(ctx context.Context, in *RolePermissionBinding, opts ...grpc.CallOption) (*BoolValue, error)
+	AddPermission(ctx context.Context, in *RolesAddPermissionRequest, opts ...grpc.CallOption) (*RolesAddPermissionResponse, error)
+	RemovePermission(ctx context.Context, in *RolesRemovePermissionRequest, opts ...grpc.CallOption) (*RolesRemovePermissionResponse, error)
 }
 
 type rolesServiceClient struct {
@@ -51,17 +50,8 @@ func (c *rolesServiceClient) Insert(ctx context.Context, in *Role, opts ...grpc.
 	return out, nil
 }
 
-func (c *rolesServiceClient) ListPermissions(ctx context.Context, in *StringValue, opts ...grpc.CallOption) (*RolesListPermissionResponse, error) {
-	out := new(RolesListPermissionResponse)
-	err := c.cc.Invoke(ctx, "/protos.RolesService/ListPermissions", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *rolesServiceClient) AddPermission(ctx context.Context, in *RolePermissionBinding, opts ...grpc.CallOption) (*BoolValue, error) {
-	out := new(BoolValue)
+func (c *rolesServiceClient) AddPermission(ctx context.Context, in *RolesAddPermissionRequest, opts ...grpc.CallOption) (*RolesAddPermissionResponse, error) {
+	out := new(RolesAddPermissionResponse)
 	err := c.cc.Invoke(ctx, "/protos.RolesService/AddPermission", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -69,8 +59,8 @@ func (c *rolesServiceClient) AddPermission(ctx context.Context, in *RolePermissi
 	return out, nil
 }
 
-func (c *rolesServiceClient) RemovePermission(ctx context.Context, in *RolePermissionBinding, opts ...grpc.CallOption) (*BoolValue, error) {
-	out := new(BoolValue)
+func (c *rolesServiceClient) RemovePermission(ctx context.Context, in *RolesRemovePermissionRequest, opts ...grpc.CallOption) (*RolesRemovePermissionResponse, error) {
+	out := new(RolesRemovePermissionResponse)
 	err := c.cc.Invoke(ctx, "/protos.RolesService/RemovePermission", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -84,9 +74,8 @@ func (c *rolesServiceClient) RemovePermission(ctx context.Context, in *RolePermi
 type RolesServiceServer interface {
 	Get(context.Context, *StringValue) (*Role, error)
 	Insert(context.Context, *Role) (*BoolValue, error)
-	ListPermissions(context.Context, *StringValue) (*RolesListPermissionResponse, error)
-	AddPermission(context.Context, *RolePermissionBinding) (*BoolValue, error)
-	RemovePermission(context.Context, *RolePermissionBinding) (*BoolValue, error)
+	AddPermission(context.Context, *RolesAddPermissionRequest) (*RolesAddPermissionResponse, error)
+	RemovePermission(context.Context, *RolesRemovePermissionRequest) (*RolesRemovePermissionResponse, error)
 	mustEmbedUnimplementedRolesServiceServer()
 }
 
@@ -100,13 +89,10 @@ func (UnimplementedRolesServiceServer) Get(context.Context, *StringValue) (*Role
 func (UnimplementedRolesServiceServer) Insert(context.Context, *Role) (*BoolValue, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Insert not implemented")
 }
-func (UnimplementedRolesServiceServer) ListPermissions(context.Context, *StringValue) (*RolesListPermissionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListPermissions not implemented")
-}
-func (UnimplementedRolesServiceServer) AddPermission(context.Context, *RolePermissionBinding) (*BoolValue, error) {
+func (UnimplementedRolesServiceServer) AddPermission(context.Context, *RolesAddPermissionRequest) (*RolesAddPermissionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddPermission not implemented")
 }
-func (UnimplementedRolesServiceServer) RemovePermission(context.Context, *RolePermissionBinding) (*BoolValue, error) {
+func (UnimplementedRolesServiceServer) RemovePermission(context.Context, *RolesRemovePermissionRequest) (*RolesRemovePermissionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemovePermission not implemented")
 }
 func (UnimplementedRolesServiceServer) mustEmbedUnimplementedRolesServiceServer() {}
@@ -158,26 +144,8 @@ func _RolesService_Insert_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RolesService_ListPermissions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StringValue)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RolesServiceServer).ListPermissions(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/protos.RolesService/ListPermissions",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RolesServiceServer).ListPermissions(ctx, req.(*StringValue))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _RolesService_AddPermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RolePermissionBinding)
+	in := new(RolesAddPermissionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -189,13 +157,13 @@ func _RolesService_AddPermission_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/protos.RolesService/AddPermission",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RolesServiceServer).AddPermission(ctx, req.(*RolePermissionBinding))
+		return srv.(RolesServiceServer).AddPermission(ctx, req.(*RolesAddPermissionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RolesService_RemovePermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RolePermissionBinding)
+	in := new(RolesRemovePermissionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -207,7 +175,7 @@ func _RolesService_RemovePermission_Handler(srv interface{}, ctx context.Context
 		FullMethod: "/protos.RolesService/RemovePermission",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RolesServiceServer).RemovePermission(ctx, req.(*RolePermissionBinding))
+		return srv.(RolesServiceServer).RemovePermission(ctx, req.(*RolesRemovePermissionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -226,10 +194,6 @@ var RolesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Insert",
 			Handler:    _RolesService_Insert_Handler,
-		},
-		{
-			MethodName: "ListPermissions",
-			Handler:    _RolesService_ListPermissions_Handler,
 		},
 		{
 			MethodName: "AddPermission",

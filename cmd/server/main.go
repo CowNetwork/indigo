@@ -46,6 +46,12 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+
+	// TODO
+	// - bind role to user
+	// - unbind roles from user
+	// - bind permission to user
+	// - unbind permission from user
 }
 
 func getEnvOrDefault(env string, def string) string {
@@ -132,32 +138,41 @@ func (serv rolesServiceServer) Insert(_ context.Context, role *pb.Role) (*pb.Boo
 	}, nil
 }
 
-func (serv rolesServiceServer) AddPermission(_ context.Context, perm *pb.RolePermissionBinding) (*pb.BoolValue, error) {
+func (serv rolesServiceServer) AddPermission(_ context.Context, req *pb.RolesAddPermissionRequest) (*pb.RolesAddPermissionResponse, error) {
 	coll := serv.sess.Collection("role_permissions")
 
-	binding := RolePermissionBinding{
-		RoleId:     perm.RoleId,
-		Permission: perm.Permission,
-	}
-	res, err := coll.Insert(&binding)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not insert permission binding: %v", err)
+	addedPerms := make([]string, len(req.Permissions))
+	for i, perm := range req.Permissions {
+		binding := RolePermissionBinding{
+			RoleId:     req.RoleId,
+			Permission: perm,
+		}
+
+		res, err := coll.Insert(&binding)
+		if err == nil && res.ID() != nil {
+			addedPerms[i] = binding.Permission
+		}
 	}
 
-	return &pb.BoolValue{
-		Value: res.ID() != nil,
+	return &pb.RolesAddPermissionResponse{
+		AddedPermissions: addedPerms,
 	}, nil
 }
 
-func (serv rolesServiceServer) RemovePermission(_ context.Context, perm *pb.RolePermissionBinding) (*pb.BoolValue, error) {
+func (serv rolesServiceServer) RemovePermission(_ context.Context, req *pb.RolesRemovePermissionRequest) (*pb.RolesRemovePermissionResponse, error) {
 	coll := serv.sess.Collection("role_permissions")
 
-	err := coll.Find("role_id", perm.RoleId).Delete()
+	filter := make([]db.LogicalExpr, len(req.Permissions))
+	for i, permission := range req.Permissions {
+		filter[i] = db.Cond{"permission": permission}
+	}
+
+	err := coll.Find("role_id", req.RoleId).And(db.Or(filter...)).Delete()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not delete permission binding: %v", err)
 	}
 
-	return &pb.BoolValue{
-		Value: true,
+	return &pb.RolesRemovePermissionResponse{
+		RemovedPermissions: req.Permissions,
 	}, nil
 }

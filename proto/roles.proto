@@ -11,10 +11,10 @@ service RolesService {
     rpc Insert (Role) returns (BoolValue) {
     }
 
-    rpc AddPermission (RolePermissionBinding) returns (BoolValue) {
+    rpc AddPermission (RolesAddPermissionRequest) returns (RolesAddPermissionResponse) {
     }
 
-    rpc RemovePermission (RolePermissionBinding) returns (BoolValue) {
+    rpc RemovePermission (RolesRemovePermissionRequest) returns (RolesRemovePermissionResponse) {
     }
 }
 
@@ -28,12 +28,20 @@ message BoolValue {
 
 message RolesAddPermissionRequest {
     string role_id = 1;
-    string permission = 2;
+    repeated string permissions = 2;
+}
+
+message RolesAddPermissionResponse {
+    repeated string added_permissions = 1;
 }
 
 message RolesRemovePermissionRequest {
     string role_id = 1;
-    string permission = 2;
+    repeated string permissions = 2;
+}
+
+message RolesRemovePermissionResponse {
+    repeated string removed_permissions = 1;
 }
 
 message RolesListPermissionResponse {
