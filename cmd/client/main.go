@@ -16,9 +16,9 @@ func main() {
 	}
 	defer conn.Close()
 
-	client := pb.NewRolesServiceClient(conn)
-	role, err := client.Get(context.Background(), &pb.StringValue{
-		Value: "minecraft_player",
+	client := pb.NewIndigoServiceClient(conn)
+	role, err := client.GetRole(context.Background(), &pb.GetRoleRequest{
+		RoleId: "minecraft_player",
 	})
 
 	st, ok := status.FromError(err)
@@ -28,7 +28,7 @@ func main() {
 
 	if st.Code() != codes.OK {
 		// insert
-		_, err := client.Insert(context.Background(), &pb.Role{
+		_, err := client.InsertRole(context.Background(), &pb.Role{
 			Id:        "minecraft_player",
 			Priority:  1,
 			Transient: false,
@@ -43,7 +43,7 @@ func main() {
 		log.Println(role)
 	}
 
-	_, err = client.AddPermission(context.Background(), &pb.RolesAddPermissionRequest{
+	_, err = client.AddRolePermission(context.Background(), &pb.AddRolePermissionRequest{
 		RoleId: "minecraft_player",
 		Permissions: []string{
 			"bukkit.command.help",
@@ -54,5 +54,14 @@ func main() {
 		log.Fatalf("failed to add permission: %v", err)
 	}
 	log.Println("Added permission.")
+
+	_, err = client.AddUserRole(context.Background(), &pb.AddUserRoleRequest{
+		UserAccountId: "2d30be41-1c6f-4758-911e-c60912cd16ca",
+		RoleIds:       []string{"minecraft_player"},
+	})
+	if err != nil {
+		log.Fatalf("failed to add user role: %v", err)
+	}
+	log.Println("User role added.")
 
 }

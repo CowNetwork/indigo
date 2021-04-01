@@ -5,10 +5,10 @@ package protos;
 option go_package = "/proto";
 
 service IndigoService {
-    rpc GetRole (StringValue) returns (Role) {
+    rpc GetRole (GetRoleRequest) returns (Role) {
     }
 
-    rpc InsertRole (Role) returns (BoolValue) {
+    rpc InsertRole (Role) returns (InsertRoleResponse) {
     }
 
     rpc AddRolePermission (AddRolePermissionRequest) returns (AddRolePermissionResponse) {
@@ -33,12 +33,16 @@ service IndigoService {
     }
 }
 
-message StringValue {
-    string value = 1;
+// ===================
+// actions with roles
+// ===================
+
+message GetRoleRequest {
+    string role_id = 1;
 }
 
-message BoolValue {
-    bool value = 1;
+message InsertRoleResponse {
+    bool successful = 1;
 }
 
 message AddRolePermissionRequest {
@@ -58,6 +62,10 @@ message RemoveRolePermissionRequest {
 message RemoveRolePermissionResponse {
     repeated string removed_permissions = 1;
 }
+
+// ===================
+// actions with users
+// ===================
 
 message GetUserRolesRequest {
     string user_account_id = 1;

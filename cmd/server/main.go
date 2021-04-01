@@ -41,7 +41,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	s.RegisterService(&pb.RolesService_ServiceDesc, &rolesServiceServer{sess: sess})
+	s.RegisterService(&pb.IndigoService_ServiceDesc, &indigoServiceServer{sess: sess})
 
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
@@ -92,22 +92,32 @@ type RolePermissionBinding struct {
 	Permission string `db:"permission"`
 }
 
-type rolesServiceServer struct {
-	pb.UnimplementedRolesServiceServer
+type UserRoleBinding struct {
+	UserAccountId string `db:"user_account_id"`
+	RoleId        string `db:"role_id"`
+}
+
+type UserPermissionBinding struct {
+	UserAccountId string `db:"user_account_id"`
+	Permission    string `db:"permission"`
+}
+
+type indigoServiceServer struct {
+	pb.UnimplementedIndigoServiceServer
 	sess db.Session
 }
 
-func (serv rolesServiceServer) Get(_ context.Context, roleId *pb.StringValue) (*pb.Role, error) {
+func (serv indigoServiceServer) GetRole(_ context.Context, req *pb.GetRoleRequest) (*pb.Role, error) {
 	coll := serv.sess.Collection("role_definitions")
-	res := coll.Find("id", roleId.Value)
+	res := coll.Find("id", req.RoleId)
 
 	var role Role
 	err := res.One(&role)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "could not fine role with id %s", roleId.Value)
+		return nil, status.Errorf(codes.NotFound, "could not fine role with id %s", req.RoleId)
 	}
 
-	res = serv.sess.Collection("role_permissions").Find("role_id", roleId.Value)
+	res = serv.sess.Collection("role_permissions").Find("role_id", req.RoleId)
 
 	var bindings []RolePermissionBinding
 
@@ -125,7 +135,7 @@ func (serv rolesServiceServer) Get(_ context.Context, roleId *pb.StringValue) (*
 	return r, nil
 }
 
-func (serv rolesServiceServer) Insert(_ context.Context, role *pb.Role) (*pb.BoolValue, error) {
+func (serv indigoServiceServer) InsertRole(_ context.Context, role *pb.Role) (*pb.InsertRoleResponse, error) {
 	coll := serv.sess.Collection("role_definitions")
 
 	res, err := coll.Insert(FromProtoRole(role))
@@ -133,33 +143,38 @@ func (serv rolesServiceServer) Insert(_ context.Context, role *pb.Role) (*pb.Boo
 		return nil, status.Errorf(codes.Internal, "could not insert role: %v", err)
 	}
 
-	return &pb.BoolValue{
-		Value: res.ID() != nil,
+	return &pb.InsertRoleResponse{
+		Successful: res.ID() != nil,
 	}, nil
 }
 
-func (serv rolesServiceServer) AddPermission(_ context.Context, req *pb.RolesAddPermissionRequest) (*pb.RolesAddPermissionResponse, error) {
+func (serv indigoServiceServer) AddRolePermission(_ context.Context, req *pb.AddRolePermissionRequest) (*pb.AddRolePermissionResponse, error) {
 	coll := serv.sess.Collection("role_permissions")
 
 	addedPerms := make([]string, len(req.Permissions))
-	for i, perm := range req.Permissions {
+	for _, perm := range req.Permissions {
 		binding := RolePermissionBinding{
 			RoleId:     req.RoleId,
 			Permission: perm,
 		}
 
+		exists, _ := coll.Find("role_id", req.RoleId).And("permission", perm).Exists()
+		if exists {
+			continue
+		}
+
 		res, err := coll.Insert(&binding)
 		if err == nil && res.ID() != nil {
-			addedPerms[i] = binding.Permission
+			addedPerms = append(addedPerms, perm)
 		}
 	}
 
-	return &pb.RolesAddPermissionResponse{
+	return &pb.AddRolePermissionResponse{
 		AddedPermissions: addedPerms,
 	}, nil
 }
 
-func (serv rolesServiceServer) RemovePermission(_ context.Context, req *pb.RolesRemovePermissionRequest) (*pb.RolesRemovePermissionResponse, error) {
+func (serv indigoServiceServer) RemoveRolePermission(_ context.Context, req *pb.RemoveRolePermissionRequest) (*pb.RemoveRolePermissionResponse, error) {
 	coll := serv.sess.Collection("role_permissions")
 
 	filter := make([]db.LogicalExpr, len(req.Permissions))
@@ -172,7 +187,130 @@ func (serv rolesServiceServer) RemovePermission(_ context.Context, req *pb.Roles
 		return nil, status.Errorf(codes.Internal, "could not delete permission binding: %v", err)
 	}
 
-	return &pb.RolesRemovePermissionResponse{
+	return &pb.RemoveRolePermissionResponse{
+		RemovedPermissions: req.Permissions,
+	}, nil
+}
+
+func (serv indigoServiceServer) GetUserRoles(_ context.Context, req *pb.GetUserRolesRequest) (*pb.GetUserRolesResponse, error) {
+	coll := serv.sess.Collection("user_roles")
+	res := coll.Find("user_account_id", req.UserAccountId)
+
+	var roles []Role
+	err := res.All(roles)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get roles of user account: %v", err)
+	}
+
+	var protoRoles []*pb.Role
+	for _, role := range roles {
+		res = serv.sess.Collection("role_permissions").Find("role_id", role.Id)
+
+		var bindings []RolePermissionBinding
+
+		// ignore error, the role just does not have any permissions
+		_ = res.All(&bindings)
+
+		permissions := make([]string, len(bindings))
+		for i, binding := range bindings {
+			permissions[i] = binding.Permission
+		}
+
+		r := role.ToProtoRole()
+		r.Permissions = permissions
+
+		protoRoles = append(protoRoles, r)
+	}
+
+	return &pb.GetUserRolesResponse{
+		Roles: protoRoles,
+	}, nil
+}
+
+func (serv indigoServiceServer) AddUserRole(_ context.Context, req *pb.AddUserRoleRequest) (*pb.AddUserRoleResponse, error) {
+	coll := serv.sess.Collection("user_roles")
+
+	addedRoles := make([]string, len(req.RoleIds))
+	for _, id := range req.RoleIds {
+		binding := UserRoleBinding{
+			UserAccountId: req.UserAccountId,
+			RoleId:        id,
+		}
+
+		exists, _ := coll.Find("user_account_id", req.UserAccountId).And("role_id", id).Exists()
+		if exists {
+			continue
+		}
+
+		res, err := coll.Insert(binding)
+		if err == nil && res.ID() != nil {
+			addedRoles = append(addedRoles, id)
+		}
+	}
+
+	return &pb.AddUserRoleResponse{
+		AddedRoleIds: nil,
+	}, nil
+}
+
+func (serv indigoServiceServer) RemoveUserRole(_ context.Context, req *pb.RemoveUserRoleRequest) (*pb.RemoveUserRoleResponse, error) {
+	coll := serv.sess.Collection("user_roles")
+
+	filter := make([]db.LogicalExpr, len(req.RoleIds))
+	for i, permission := range req.RoleIds {
+		filter[i] = db.Cond{"role_id": permission}
+	}
+
+	err := coll.Find("user_account_id", req.UserAccountId).And(db.Or(filter...)).Delete()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not delete role binding: %v", err)
+	}
+
+	return &pb.RemoveUserRoleResponse{
+		RemovedRoleIds: req.RoleIds,
+	}, nil
+}
+
+func (serv indigoServiceServer) AddUserPermission(_ context.Context, req *pb.AddUserPermissionRequest) (*pb.AddUserPermissionResponse, error) {
+	coll := serv.sess.Collection("user_permissions")
+
+	addedPermissions := make([]string, len(req.Permissions))
+	for _, permission := range req.Permissions {
+		binding := UserPermissionBinding{
+			UserAccountId: req.UserAccountId,
+			Permission:    permission,
+		}
+
+		exists, _ := coll.Find("user_account_id", req.UserAccountId).And("permission", permission).Exists()
+		if exists {
+			continue
+		}
+
+		res, err := coll.Insert(binding)
+		if err == nil && res.ID() != nil {
+			addedPermissions = append(addedPermissions, permission)
+		}
+	}
+
+	return &pb.AddUserPermissionResponse{
+		AddedPermissions: addedPermissions,
+	}, nil
+}
+
+func (serv indigoServiceServer) RemoveUserPermission(_ context.Context, req *pb.RemoveUserPermissionRequest) (*pb.RemoveUserPermissionResponse, error) {
+	coll := serv.sess.Collection("user_permissions")
+
+	filter := make([]db.LogicalExpr, len(req.Permissions))
+	for i, permission := range req.Permissions {
+		filter[i] = db.Cond{"permission": permission}
+	}
+
+	err := coll.Find("user_account_id", req.UserAccountId).And(db.Or(filter...)).Delete()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not delete permission binding: %v", err)
+	}
+
+	return &pb.RemoveUserPermissionResponse{
 		RemovedPermissions: req.Permissions,
 	}, nil
 }
