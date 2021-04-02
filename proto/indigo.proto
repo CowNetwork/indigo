@@ -118,8 +118,3 @@ message Role {
     string color = 4;
     repeated string permissions = 5;
 }
-
-message RolePermissionBinding {
-    string role_id = 1;
-    string permission = 2;
-}
