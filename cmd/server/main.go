@@ -60,28 +60,6 @@ func getEnvOrDefault(env string, def string) string {
 	return value
 }
 
-type Role struct {
-	Id        string `db:"id"`
-	Priority  int32  `db:"priority"`
-	Transient bool   `db:"transient"`
-	Color     string `db:"color"`
-}
-
-type RolePermissionBinding struct {
-	RoleId     string `db:"role_id"`
-	Permission string `db:"permission"`
-}
-
-type UserRoleBinding struct {
-	UserAccountId string `db:"user_account_id"`
-	RoleId        string `db:"role_id"`
-}
-
-type UserPermissionBinding struct {
-	UserAccountId string `db:"user_account_id"`
-	Permission    string `db:"permission"`
-}
-
 type indigoServiceServer struct {
 	pb.UnimplementedIndigoServiceServer
 	da dao.DataAccessor
