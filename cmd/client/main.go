@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	pb "github.com/cownetwork/indigo/proto"
+	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,11 +28,13 @@ func main() {
 
 	if st.Code() != codes.OK {
 		// insert
-		_, err := client.InsertRole(context.Background(), &pb.Role{
-			Id:        "minecraft_player",
-			Priority:  1,
-			Transient: false,
-			Color:     "6699ff",
+		_, err := client.InsertRole(context.Background(), &pb.InsertRoleRequest{
+			Role: &pb.Role{
+				Id:        "minecraft_player",
+				Priority:  1,
+				Transient: false,
+				Color:     "6699ff",
+			},
 		})
 
 		if err != nil {

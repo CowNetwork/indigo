@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/cownetwork/indigo/internal/dao"
 	"github.com/cownetwork/indigo/internal/model"
-	pb "github.com/cownetwork/indigo/proto"
+	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

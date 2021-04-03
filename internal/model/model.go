@@ -1,6 +1,6 @@
 package model
 
-import pb "github.com/cownetwork/indigo/proto"
+import pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
 
 type Role struct {
 	Id        string `db:"id"`

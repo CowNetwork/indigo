@@ -3,13 +3,12 @@ package main
 import (
 	"github.com/cownetwork/indigo/internal/psql"
 	"github.com/cownetwork/indigo/internal/rpc"
+	"github.com/cownetwork/mooapis-go/cow/indigo/v1"
 	"github.com/upper/db/v4/adapter/postgresql"
 	"google.golang.org/grpc"
 	"log"
 	"net"
 	"os"
-
-	pb "github.com/cownetwork/indigo/proto"
 )
 
 func main() {
@@ -39,7 +38,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	s.RegisterService(&pb.IndigoService_ServiceDesc, &rpc.IndigoServiceServer{
+	s.RegisterService(&indigo.IndigoService_ServiceDesc, &rpc.IndigoServiceServer{
 		Dao: &psql.DataAccessor{Session: sess},
 	})
 
