@@ -6,8 +6,8 @@ github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9Pq
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=
-github.com/cownetwork/mooapis-go v0.0.0-20210403142922-453b2b8fe4ba h1:4NgU1LOfT7MTrOim2CKhXOzBCiBvWTiNUllgGS/xYs0=
-github.com/cownetwork/mooapis-go v0.0.0-20210403142922-453b2b8fe4ba/go.mod h1:GgMxILXk0DhUNs+hg+KVauUl4AHv5Ojh1BkCQo5swzA=
+github.com/cownetwork/mooapis-go v0.1.0 h1:9nGUGrBkOzEiASVy2K5+g7383xdk9ry1hWVfGKn8jPg=
+github.com/cownetwork/mooapis-go v0.1.0/go.mod h1:WUjaiLHPJNQaYtMdPlFT1NC6Tr3EIPqYsyuu134v3kE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
