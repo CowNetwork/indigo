@@ -14,7 +14,7 @@ type IndigoServiceServer struct {
 	Dao dao.DataAccessor
 }
 
-func (serv IndigoServiceServer) GetRole(_ context.Context, req *pb.GetRoleRequest) (*pb.Role, error) {
+func (serv IndigoServiceServer) GetRole(_ context.Context, req *pb.GetRoleRequest) (*pb.GetRoleResponse, error) {
 	role, err := serv.Dao.GetRole(req.RoleId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get role: %v", err)
@@ -33,11 +33,11 @@ func (serv IndigoServiceServer) GetRole(_ context.Context, req *pb.GetRoleReques
 	r := role.ToProtoRole()
 	r.Permissions = permissions
 
-	return r, nil
+	return &pb.GetRoleResponse{Role: r}, nil
 }
 
-func (serv IndigoServiceServer) InsertRole(_ context.Context, role *pb.Role) (*pb.InsertRoleResponse, error) {
-	err := serv.Dao.InsertRole(model.FromProtoRole(role))
+func (serv IndigoServiceServer) InsertRole(_ context.Context, req *pb.InsertRoleRequest) (*pb.InsertRoleResponse, error) {
+	err := serv.Dao.InsertRole(model.FromProtoRole(req.Role))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not insert role: %v", err)
 	}
@@ -70,13 +70,18 @@ func (serv IndigoServiceServer) RemoveRolePermission(_ context.Context, req *pb.
 }
 
 func (serv IndigoServiceServer) GetUserRoles(_ context.Context, req *pb.GetUserRolesRequest) (*pb.GetUserRolesResponse, error) {
-	roles, err := serv.Dao.GetUserRoles(req.UserAccountId)
+	roleBindings, err := serv.Dao.GetUserRoleBindings(req.UserAccountId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not get user roles: %v", err)
+		return nil, status.Errorf(codes.Internal, "could not get user roles bindings: %v", err)
 	}
 
 	var protoRoles []*pb.Role
-	for _, role := range roles {
+	for _, binding := range roleBindings {
+		role, err := serv.Dao.GetRole(binding.RoleId)
+		if err != nil {
+			continue
+		}
+
 		protoRoles = append(protoRoles, role.ToProtoRole())
 	}
 

@@ -76,13 +76,14 @@ func (d *DataAccessor) RemoveRolePermissions(roleId string, permissions []string
 	return permissions, err
 }
 
-func (d *DataAccessor) GetUserRoles(userAccountId string) ([]*model.Role, error) {
+func (d *DataAccessor) GetUserRoleBindings(userAccountId string) ([]*model.UserRoleBinding, error) {
 	coll := d.Session.Collection("user_roles")
 	res := coll.Find("user_account_id", userAccountId)
 
-	var roles []*model.Role
-	err := res.All(roles)
-	return roles, err
+	var roleBindings []*model.UserRoleBinding
+	err := res.All(&roleBindings)
+
+	return roleBindings, err
 }
 
 func (d *DataAccessor) AddUserRoles(userAccountId string, roleIds []string) ([]string, error) {
