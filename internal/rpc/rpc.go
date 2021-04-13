@@ -99,7 +99,15 @@ func (serv IndigoServiceServer) UpdateRole(_ context.Context, req *pb.UpdateRole
 }
 
 func (serv IndigoServiceServer) DeleteRole(_ context.Context, req *pb.DeleteRoleRequest) (*pb.DeleteRoleResponse, error) {
-	err := serv.Dao.DeleteRole(req.RoleId)
+	role, err := serv.Dao.GetRole(req.RoleId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get role: %v", err)
+	}
+	if role == nil {
+		return nil, status.Error(codes.NotFound, "this role does not exists")
+	}
+
+	err = serv.Dao.DeleteRole(req.RoleId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not delete role: %v", err)
 	}
