@@ -46,6 +46,9 @@ func (serv IndigoServiceServer) GetRole(_ context.Context, req *pb.GetRoleReques
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get role: %v", err)
 	}
+	if role == nil {
+		return nil, status.Errorf(codes.NotFound, "could not find role")
+	}
 
 	bindings, err := serv.Dao.GetRolePermissions(req.RoleId)
 	if err != nil {
