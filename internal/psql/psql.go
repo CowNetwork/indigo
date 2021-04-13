@@ -10,6 +10,15 @@ type DataAccessor struct {
 	Session db.Session
 }
 
+func (d *DataAccessor) ListRoles() ([]*model.Role, error) {
+	coll := d.Session.Collection("role_definitions")
+	res := coll.Find()
+
+	var roles []*model.Role
+	err := res.All(&roles)
+	return roles, err
+}
+
 func (d *DataAccessor) InsertRole(role *model.Role) error {
 	coll := d.Session.Collection("role_definitions")
 
@@ -17,19 +26,45 @@ func (d *DataAccessor) InsertRole(role *model.Role) error {
 	if err != nil {
 		return err
 	}
-	if res.ID() != nil {
+	if res.ID() == nil {
 		return fmt.Errorf("no psql id found after insertion of role %v", role.Id)
 	}
 	return nil
+}
+
+func (d *DataAccessor) UpdateRole(roleId string, role *model.Role) error {
+	coll := d.Session.Collection("role_definitions")
+	role.Id = roleId
+
+	return coll.UpdateReturning(role)
 }
 
 func (d *DataAccessor) GetRole(roleId string) (*model.Role, error) {
 	coll := d.Session.Collection("role_definitions")
 	res := coll.Find("id", roleId)
 
+	count, err := res.TotalEntries()
+	if err != nil {
+		return nil, err
+	}
+	if count == 0 {
+		return nil, nil
+	}
+
 	var role model.Role
-	err := res.One(&role)
+	err = res.One(&role)
 	return &role, err
+}
+
+func (d *DataAccessor) DeleteRole(roleId string) error {
+	coll := d.Session.Collection("role_definitions")
+	err := coll.Find("id", roleId).Delete()
+	if err != nil {
+		return err
+	}
+
+	coll = d.Session.Collection("role_permissions")
+	return coll.Find("role_id", roleId).Delete()
 }
 
 func (d *DataAccessor) GetRolePermissions(roleId string) ([]*model.RolePermissionBinding, error) {
@@ -44,7 +79,7 @@ func (d *DataAccessor) GetRolePermissions(roleId string) ([]*model.RolePermissio
 func (d *DataAccessor) AddRolePermissions(roleId string, permissions []string) ([]string, error) {
 	coll := d.Session.Collection("role_permissions")
 
-	addedPerms := make([]string, len(permissions))
+	var addedPerms []string
 	for _, perm := range permissions {
 		binding := model.RolePermissionBinding{
 			RoleId:     roleId,
