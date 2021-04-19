@@ -14,6 +14,7 @@ type DataAccessor interface {
 	GetUserRoleBindings(userAccountId string) ([]*model.UserRoleBinding, error)
 	AddUserRoles(userAccountId string, roleIds []string) ([]string, error)
 	RemoveUserRoles(userAccountId string, roleIds []string) ([]string, error)
+	GetUserPermissions(userAccountId string) ([]*model.UserPermissionBinding, error)
 	AddUserPermissions(userAccountId string, permissions []string) ([]string, error)
 	RemoveUserPermissions(userAccountId string, permissions []string) ([]string, error)
 }

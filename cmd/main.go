@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/cownetwork/indigo/internal/psql"
 	"github.com/cownetwork/indigo/internal/rpc"
 	"github.com/cownetwork/mooapis-go/cow/indigo/v1"
@@ -32,7 +33,8 @@ func main() {
 	log.Println("Connected to PostgresSQL.")
 
 	// setup grpc server
-	lis, err := net.Listen("tcp", ":6969")
+	address := fmt.Sprintf("%s:%s", getEnvOrDefault("INDIGO_SERVICE_HOST", ""), getEnvOrDefault("INDIGO_SERVICE_PORT", "6969"))
+	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}

@@ -3,7 +3,7 @@ module github.com/cownetwork/indigo
 go 1.16
 
 require (
-	github.com/cownetwork/mooapis-go v0.15.7
+	github.com/cownetwork/mooapis-go v0.16.4
 	github.com/lib/pq v1.10.0 // indirect
 	github.com/upper/db/v4 v4.1.0
 	google.golang.org/grpc v1.36.1

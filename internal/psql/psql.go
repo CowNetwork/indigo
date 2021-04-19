@@ -102,13 +102,24 @@ func (d *DataAccessor) AddRolePermissions(roleId string, permissions []string) (
 func (d *DataAccessor) RemoveRolePermissions(roleId string, permissions []string) ([]string, error) {
 	coll := d.Session.Collection("role_permissions")
 
-	filter := make([]db.LogicalExpr, len(permissions))
-	for i, permission := range permissions {
-		filter[i] = db.Cond{"permission": permission}
-	}
+	var removedPerms []string
+	for _, perm := range permissions {
+		binding := model.RolePermissionBinding{
+			RoleId:     roleId,
+			Permission: perm,
+		}
 
-	err := coll.Find("role_id", roleId).And(db.Or(filter...)).Delete()
-	return permissions, err
+		exists, _ := coll.Find("role_id", roleId).And("permission", perm).Exists()
+		if !exists {
+			continue
+		}
+
+		err := coll.Find(&binding).Delete()
+		if err == nil {
+			removedPerms = append(removedPerms, perm)
+		}
+	}
+	return removedPerms, nil
 }
 
 func (d *DataAccessor) GetUserRoleBindings(userAccountId string) ([]*model.UserRoleBinding, error) {
@@ -147,13 +158,35 @@ func (d *DataAccessor) AddUserRoles(userAccountId string, roleIds []string) ([]s
 func (d *DataAccessor) RemoveUserRoles(userAccountId string, roleIds []string) ([]string, error) {
 	coll := d.Session.Collection("user_roles")
 
-	filter := make([]db.LogicalExpr, len(roleIds))
-	for i, permission := range roleIds {
-		filter[i] = db.Cond{"role_id": permission}
-	}
+	removedRoles := make([]string, len(roleIds))
+	for _, id := range roleIds {
+		binding := model.UserRoleBinding{
+			UserAccountId: userAccountId,
+			RoleId:        id,
+		}
 
-	err := coll.Find("user_account_id", userAccountId).And(db.Or(filter...)).Delete()
-	return roleIds, err
+		exists, _ := coll.Find("user_account_id", userAccountId).And("role_id", id).Exists()
+		if exists {
+			continue
+		}
+
+		err := coll.Find(&binding).Delete()
+		if err == nil {
+			removedRoles = append(removedRoles, id)
+		}
+	}
+	return removedRoles, nil
+}
+
+func (d *DataAccessor) GetUserPermissions(userAccountId string) ([]*model.UserPermissionBinding, error) {
+	coll := d.Session.Collection("user_permissions")
+
+	res := coll.Find("user_account_id", userAccountId)
+
+	var permBindings []*model.UserPermissionBinding
+	err := res.All(&permBindings)
+
+	return permBindings, err
 }
 
 func (d *DataAccessor) AddUserPermissions(userAccountId string, permissions []string) ([]string, error) {
@@ -182,11 +215,22 @@ func (d *DataAccessor) AddUserPermissions(userAccountId string, permissions []st
 func (d *DataAccessor) RemoveUserPermissions(userAccountId string, permissions []string) ([]string, error) {
 	coll := d.Session.Collection("user_permissions")
 
-	filter := make([]db.LogicalExpr, len(permissions))
-	for i, permission := range permissions {
-		filter[i] = db.Cond{"permission": permission}
-	}
+	removedPermissions := make([]string, len(permissions))
+	for _, permission := range permissions {
+		binding := model.UserPermissionBinding{
+			UserAccountId: userAccountId,
+			Permission:    permission,
+		}
 
-	err := coll.Find("user_account_id", userAccountId).And(db.Or(filter...)).Delete()
-	return permissions, err
+		exists, _ := coll.Find("user_account_id", userAccountId).And("permission", permission).Exists()
+		if exists {
+			continue
+		}
+
+		err := coll.Find(&binding).Delete()
+		if err == nil {
+			removedPermissions = append(removedPermissions, permission)
+		}
+	}
+	return removedPermissions, nil
 }
