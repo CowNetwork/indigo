@@ -63,6 +63,12 @@ func (d *DataAccessor) DeleteRole(roleId string) error {
 		return err
 	}
 
+	coll = d.Session.Collection("user_roles")
+	err = coll.Find("role_id", roleId).Delete()
+	if err != nil {
+		return err
+	}
+
 	coll = d.Session.Collection("role_permissions")
 	return coll.Find("role_id", roleId).Delete()
 }

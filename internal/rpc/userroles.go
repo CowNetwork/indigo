@@ -27,7 +27,7 @@ func UserRoleBindingsToProtoRoles(da dao.DataAccessor, roleBindings []*model.Use
 	var protoRoles []*pb.Role
 	for _, binding := range roleBindings {
 		role, err := da.GetRole(binding.RoleId)
-		if err != nil {
+		if err != nil || role == nil {
 			continue
 		}
 
