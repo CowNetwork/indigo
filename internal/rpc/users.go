@@ -15,14 +15,25 @@ func (serv IndigoServiceServer) GetUser(_ context.Context, req *pb.GetUserReques
 		return nil, status.Errorf(codes.Internal, "could not get user roles bindings: %v", err)
 	}
 	protoRoles := UserRoleBindingsToProtoRoles(serv.Dao, roleBindings)
+	for _, role := range protoRoles {
+		permBindings, err := serv.Dao.GetRolePermissions(role.Id)
+		if err != nil {
+			continue
+		}
+		rolePerms := make([]string, len(permBindings))
+		for i, binding := range permBindings {
+			rolePerms[i] = binding.Permission
+		}
+		role.Permissions = rolePerms
+	}
 
 	permBindings, err := serv.Dao.GetUserPermissions(req.UserAccountId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get user permission bindings: %v", err)
 	}
 	perms := make([]string, len(permBindings))
-	for _, binding := range permBindings {
-		perms = append(perms, binding.Permission)
+	for i, binding := range permBindings {
+		perms[i] = binding.Permission
 	}
 
 	return &pb.GetUserResponse{

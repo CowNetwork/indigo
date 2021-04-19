@@ -18,7 +18,7 @@ func (serv IndigoServiceServer) AddRolePermissions(_ context.Context, req *pb.Ad
 	}
 
 	// only take those permissions that match the regex.
-	perms := make([]string, len(req.Permissions))
+	var perms []string
 	for _, permission := range req.Permissions {
 		if perm.ValidatePermission(permission) {
 			perms = append(perms, permission)

@@ -15,8 +15,8 @@ func (serv IndigoServiceServer) GetUserPermissions(_ context.Context, req *pb.Ge
 	}
 
 	perms := make([]string, len(permBindings))
-	for _, binding := range permBindings {
-		perms = append(perms, binding.Permission)
+	for i, binding := range permBindings {
+		perms[i] = binding.Permission
 	}
 
 	return &pb.GetUserPermissionsResponse{Permissions: perms}, nil
@@ -24,7 +24,7 @@ func (serv IndigoServiceServer) GetUserPermissions(_ context.Context, req *pb.Ge
 
 func (serv IndigoServiceServer) AddUserPermissions(_ context.Context, req *pb.AddUserPermissionsRequest) (*pb.AddUserPermissionsResponse, error) {
 	// only take those permissions that match the regex.
-	perms := make([]string, len(req.Permissions))
+	var perms []string
 	for _, permission := range req.Permissions {
 		if perm.ValidatePermission(permission) {
 			perms = append(perms, permission)

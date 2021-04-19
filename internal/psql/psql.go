@@ -141,7 +141,7 @@ func (d *DataAccessor) GetUserRoleBindings(userAccountId string) ([]*model.UserR
 func (d *DataAccessor) AddUserRoles(userAccountId string, roleIds []string) ([]string, error) {
 	coll := d.Session.Collection("user_roles")
 
-	addedRoles := make([]string, len(roleIds))
+	var addedRoles []string
 	for _, id := range roleIds {
 		binding := model.UserRoleBinding{
 			UserAccountId: userAccountId,
@@ -164,7 +164,7 @@ func (d *DataAccessor) AddUserRoles(userAccountId string, roleIds []string) ([]s
 func (d *DataAccessor) RemoveUserRoles(userAccountId string, roleIds []string) ([]string, error) {
 	coll := d.Session.Collection("user_roles")
 
-	removedRoles := make([]string, len(roleIds))
+	var removedRoles []string
 	for _, id := range roleIds {
 		binding := model.UserRoleBinding{
 			UserAccountId: userAccountId,
@@ -198,7 +198,7 @@ func (d *DataAccessor) GetUserPermissions(userAccountId string) ([]*model.UserPe
 func (d *DataAccessor) AddUserPermissions(userAccountId string, permissions []string) ([]string, error) {
 	coll := d.Session.Collection("user_permissions")
 
-	addedPermissions := make([]string, len(permissions))
+	var addedPerms []string
 	for _, permission := range permissions {
 		binding := model.UserPermissionBinding{
 			UserAccountId: userAccountId,
@@ -212,16 +212,16 @@ func (d *DataAccessor) AddUserPermissions(userAccountId string, permissions []st
 
 		res, err := coll.Insert(binding)
 		if err == nil && res.ID() != nil {
-			addedPermissions = append(addedPermissions, permission)
+			addedPerms = append(addedPerms, permission)
 		}
 	}
-	return addedPermissions, nil
+	return addedPerms, nil
 }
 
 func (d *DataAccessor) RemoveUserPermissions(userAccountId string, permissions []string) ([]string, error) {
 	coll := d.Session.Collection("user_permissions")
 
-	removedPermissions := make([]string, len(permissions))
+	var removedPerms []string
 	for _, permission := range permissions {
 		binding := model.UserPermissionBinding{
 			UserAccountId: userAccountId,
@@ -235,8 +235,8 @@ func (d *DataAccessor) RemoveUserPermissions(userAccountId string, permissions [
 
 		err := coll.Find(&binding).Delete()
 		if err == nil {
-			removedPermissions = append(removedPermissions, permission)
+			removedPerms = append(removedPerms, permission)
 		}
 	}
-	return removedPermissions, nil
+	return removedPerms, nil
 }
