@@ -67,7 +67,7 @@ func (serv IndigoServiceServer) HasPermission(_ context.Context, req *pb.HasPerm
 		}
 	}
 
-	perms := make([]string, len(permBindings))
+	var perms []string
 	for _, binding := range permBindings {
 		perms = append(perms, binding.Permission)
 	}
