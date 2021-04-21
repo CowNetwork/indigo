@@ -26,7 +26,7 @@ func (serv IndigoServiceServer) GetUserRoles(_ context.Context, req *pb.GetUserR
 func UserRoleBindingsToProtoRoles(da dao.DataAccessor, roleBindings []*model.UserRoleBinding) []*pb.Role {
 	var protoRoles []*pb.Role
 	for _, binding := range roleBindings {
-		role, err := da.GetRole(binding.RoleId)
+		role, err := da.GetRole(model.IdToRoleIdentifier(binding.RoleId))
 		if err != nil || role == nil {
 			continue
 		}
@@ -37,7 +37,19 @@ func UserRoleBindingsToProtoRoles(da dao.DataAccessor, roleBindings []*model.Use
 }
 
 func (serv IndigoServiceServer) AddUserRoles(_ context.Context, req *pb.AddUserRolesRequest) (*pb.AddUserRolesResponse, error) {
-	addedRoles, err := serv.Dao.AddUserRoles(req.UserAccountId, req.RoleIds)
+	var roleIds []string
+	for _, id := range req.RoleIds {
+		r, err := serv.Dao.GetRole(id)
+		if err != nil {
+			continue
+		}
+		roleIds = append(roleIds, r.Id)
+	}
+	if len(roleIds) == 0 {
+		return nil, status.Error(codes.NotFound, "could not find any roles")
+	}
+
+	addedRoles, err := serv.Dao.AddUserRoles(req.UserAccountId, roleIds)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not add user roles: %v", err)
 	}
@@ -48,7 +60,19 @@ func (serv IndigoServiceServer) AddUserRoles(_ context.Context, req *pb.AddUserR
 }
 
 func (serv IndigoServiceServer) RemoveUserRoles(_ context.Context, req *pb.RemoveUserRolesRequest) (*pb.RemoveUserRolesResponse, error) {
-	removedRoles, err := serv.Dao.RemoveUserRoles(req.UserAccountId, req.RoleIds)
+	var roleIds []string
+	for _, id := range req.RoleIds {
+		r, err := serv.Dao.GetRole(id)
+		if err != nil {
+			continue
+		}
+		roleIds = append(roleIds, r.Id)
+	}
+	if len(roleIds) == 0 {
+		return nil, status.Error(codes.NotFound, "could not find any roles")
+	}
+
+	removedRoles, err := serv.Dao.RemoveUserRoles(req.UserAccountId, roleIds)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not add user roles: %v", err)
 	}

@@ -1,8 +1,10 @@
 package psql
 
 import (
+	"errors"
 	"fmt"
 	"github.com/cownetwork/indigo/internal/model"
+	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
 	"github.com/upper/db/v4"
 )
 
@@ -32,16 +34,34 @@ func (d *DataAccessor) InsertRole(role *model.Role) error {
 	return nil
 }
 
-func (d *DataAccessor) UpdateRole(roleId string, role *model.Role) error {
+func (d *DataAccessor) UpdateRole(roleId *pb.RoleIdentifier, role *model.Role) error {
 	coll := d.Session.Collection("role_definitions")
-	role.Id = roleId
+
+	switch u := roleId.Id.(type) {
+	case *pb.RoleIdentifier_Uuid:
+		role.Id = u.Uuid
+	case *pb.RoleIdentifier_NameId:
+		role.Name = u.NameId.Name
+		role.Type = u.NameId.Type
+	}
 
 	return coll.UpdateReturning(role)
 }
 
-func (d *DataAccessor) GetRole(roleId string) (*model.Role, error) {
+func (d *DataAccessor) GetRole(roleId *pb.RoleIdentifier) (*model.Role, error) {
 	coll := d.Session.Collection("role_definitions")
-	res := coll.Find("id", roleId)
+
+	var res db.Result
+	switch u := roleId.Id.(type) {
+	case *pb.RoleIdentifier_Uuid:
+		res = coll.Find("id", u.Uuid)
+	case *pb.RoleIdentifier_NameId:
+		res = coll.Find("name", u.NameId.Name).And("type", u.NameId.Type)
+	}
+
+	if res == nil {
+		return nil, errors.New("the resultset is nil")
+	}
 
 	count, err := res.TotalEntries()
 	if err != nil {
@@ -56,9 +76,17 @@ func (d *DataAccessor) GetRole(roleId string) (*model.Role, error) {
 	return &role, err
 }
 
-func (d *DataAccessor) DeleteRole(roleId string) error {
+func (d *DataAccessor) DeleteRole(roleId *pb.RoleIdentifier) error {
 	coll := d.Session.Collection("role_definitions")
-	err := coll.Find("id", roleId).Delete()
+
+	var err error
+	switch u := roleId.Id.(type) {
+	case *pb.RoleIdentifier_Uuid:
+		err = coll.Find("id", u.Uuid).Delete()
+	case *pb.RoleIdentifier_NameId:
+		err = coll.Find("name", u.NameId.Name).And("type", u.NameId.Type).Delete()
+	}
+
 	if err != nil {
 		return err
 	}
@@ -110,17 +138,12 @@ func (d *DataAccessor) RemoveRolePermissions(roleId string, permissions []string
 
 	var removedPerms []string
 	for _, perm := range permissions {
-		binding := model.RolePermissionBinding{
-			RoleId:     roleId,
-			Permission: perm,
-		}
-
 		exists, _ := coll.Find("role_id", roleId).And("permission", perm).Exists()
 		if !exists {
 			continue
 		}
 
-		err := coll.Find(&binding).Delete()
+		err := coll.Find("role_id", roleId).And("permission", perm).Delete()
 		if err == nil {
 			removedPerms = append(removedPerms, perm)
 		}
@@ -143,6 +166,7 @@ func (d *DataAccessor) AddUserRoles(userAccountId string, roleIds []string) ([]s
 
 	var addedRoles []string
 	for _, id := range roleIds {
+
 		binding := model.UserRoleBinding{
 			UserAccountId: userAccountId,
 			RoleId:        id,
@@ -166,17 +190,12 @@ func (d *DataAccessor) RemoveUserRoles(userAccountId string, roleIds []string) (
 
 	var removedRoles []string
 	for _, id := range roleIds {
-		binding := model.UserRoleBinding{
-			UserAccountId: userAccountId,
-			RoleId:        id,
-		}
-
 		exists, _ := coll.Find("user_account_id", userAccountId).And("role_id", id).Exists()
 		if exists {
 			continue
 		}
 
-		err := coll.Find(&binding).Delete()
+		err := coll.Find("user_account_id", userAccountId).And("role_id", id).Delete()
 		if err == nil {
 			removedRoles = append(removedRoles, id)
 		}
@@ -223,17 +242,12 @@ func (d *DataAccessor) RemoveUserPermissions(userAccountId string, permissions [
 
 	var removedPerms []string
 	for _, permission := range permissions {
-		binding := model.UserPermissionBinding{
-			UserAccountId: userAccountId,
-			Permission:    permission,
-		}
-
 		exists, _ := coll.Find("user_account_id", userAccountId).And("permission", permission).Exists()
 		if exists {
 			continue
 		}
 
-		err := coll.Find(&binding).Delete()
+		err := coll.Find("user_account_id", userAccountId).And("permission", permission).Delete()
 		if err == nil {
 			removedPerms = append(removedPerms, permission)
 		}

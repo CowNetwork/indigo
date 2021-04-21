@@ -1,7 +1,9 @@
 -- migrate:up
 create table role_definitions
 (
-    id        varchar(128) primary key,
+    id        uuid primary key,
+    name      varchar(128),
+    type      varchar(64),
     priority  integer,
     transient boolean,
     color     varchar(6)
@@ -9,16 +11,18 @@ create table role_definitions
 
 create table role_permissions
 (
-    role_id    varchar(128),
+    role_id    uuid,
     permission varchar(256),
-    primary key (role_id, permission)
+    primary key (role_id, permission),
+    foreign key (role_id) references role_definitions (id)
 );
 
 create table user_roles
 (
     user_account_id uuid,
-    role_id         varchar(128),
-    primary key (user_account_id, role_id)
+    role_id         uuid,
+    primary key (user_account_id, role_id),
+    foreign key (role_id) references role_definitions (id)
 );
 
 create table user_permissions

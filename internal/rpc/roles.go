@@ -4,9 +4,13 @@ import (
 	"context"
 	"github.com/cownetwork/indigo/internal/model"
 	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"regexp"
 )
+
+var snakeCaseRegex = regexp.MustCompile("^[a-z]+(_[a-z]+)*$")
 
 func (serv IndigoServiceServer) ListRoles(_ context.Context, req *pb.ListRolesRequest) (*pb.ListRolesResponse, error) {
 	roles, err := serv.Dao.ListRoles()
@@ -44,7 +48,7 @@ func (serv IndigoServiceServer) GetRole(_ context.Context, req *pb.GetRoleReques
 		return nil, status.Errorf(codes.NotFound, "could not find role")
 	}
 
-	bindings, err := serv.Dao.GetRolePermissions(req.RoleId)
+	bindings, err := serv.Dao.GetRolePermissions(role.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get role permissions: %v", err)
 	}
@@ -61,13 +65,36 @@ func (serv IndigoServiceServer) GetRole(_ context.Context, req *pb.GetRoleReques
 }
 
 func (serv IndigoServiceServer) InsertRole(_ context.Context, req *pb.InsertRoleRequest) (*pb.InsertRoleResponse, error) {
-	role, err := serv.Dao.GetRole(req.Role.Id)
+	n := req.Role.Name
+	t := req.Role.Type
+	if len(n) == 0 || len(t) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "name or type can not be empty.")
+	}
+	if !snakeCaseRegex.MatchString(n) || !snakeCaseRegex.MatchString(t) {
+		return nil, status.Error(codes.InvalidArgument, "name and type must be snake_case.")
+	}
+	if len(req.Role.Color) > 6 {
+		return nil, status.Error(codes.InvalidArgument, "role color length must be 6 or less.")
+	}
+
+	role, err := serv.Dao.GetRole(&pb.RoleIdentifier{
+		Id: &pb.RoleIdentifier_NameId{NameId: &pb.RoleNameIdentifier{
+			Name: n,
+			Type: t,
+		}},
+	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get role: %v", err)
 	}
 	if role != nil {
 		return nil, status.Error(codes.AlreadyExists, "this role already exists")
 	}
+
+	roleUuid, err := uuid.NewUUID()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not generate uuid: %v", err)
+	}
+	req.Role.Id = roleUuid.String()
 
 	err = serv.Dao.InsertRole(model.FromProtoRole(req.Role))
 	if err != nil {
@@ -86,7 +113,13 @@ func (serv IndigoServiceServer) UpdateRole(_ context.Context, req *pb.UpdateRole
 	}
 
 	role := req.RoleData
-	role.Id = req.RoleId
+	// if it is name+type, then the user may wanted to update
+	// the name, so we only set the uuid for them.
+	switch u := req.RoleId.Id.(type) {
+	case *pb.RoleIdentifier_Uuid:
+		role.Id = u.Uuid
+	}
+
 	return &pb.UpdateRoleResponse{
 		UpdatedRole: role,
 	}, nil

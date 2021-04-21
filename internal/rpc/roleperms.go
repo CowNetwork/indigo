@@ -25,7 +25,7 @@ func (serv IndigoServiceServer) AddRolePermissions(_ context.Context, req *pb.Ad
 		}
 	}
 
-	addedPerms, err := serv.Dao.AddRolePermissions(req.RoleId, perms)
+	addedPerms, err := serv.Dao.AddRolePermissions(role.Id, perms)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not add permissions: %v", err)
 	}
@@ -44,7 +44,7 @@ func (serv IndigoServiceServer) RemoveRolePermissions(_ context.Context, req *pb
 		return nil, status.Error(codes.NotFound, "this role does not exists")
 	}
 
-	removedPerms, err := serv.Dao.RemoveRolePermissions(req.RoleId, req.Permissions)
+	removedPerms, err := serv.Dao.RemoveRolePermissions(role.Id, req.Permissions)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not remove permissions: %v", err)
 	}
