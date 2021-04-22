@@ -6,8 +6,8 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
 	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
-	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 	"log"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"

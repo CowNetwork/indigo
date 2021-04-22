@@ -47,9 +47,7 @@ func (r *Role) SetPermissions(perms []*RolePermissionBinding) {
 }
 
 func (r *Role) AddPermissions(perms []string) {
-	for _, perm := range perms {
-		r.Permissions = append(r.Permissions, perm)
-	}
+	r.Permissions = append(r.Permissions, perms...)
 }
 
 func (r *Role) RemovePermissions(perms []string) {
@@ -59,27 +57,26 @@ func (r *Role) RemovePermissions(perms []string) {
 func (r *Role) Merge(r2 *pb.Role, fm pb.UpdateRoleRequest_FieldMask) {
 	switch fm {
 	case pb.UpdateRoleRequest_FIELD_MASK_ALL:
+		r.Permissions = r2.Permissions
+		fallthrough
 	case pb.UpdateRoleRequest_FIELD_MASK_ALL_PROPERTIES:
-
-		break
+		r.Name = r2.Name
+		r.Type = r2.Type
+		r.Priority = r2.Priority
+		r.Transient = r2.Transient
+		r.Color = r2.Color
 	case pb.UpdateRoleRequest_FIELD_MASK_NAME:
 		r.Name = r2.Name
-		break
 	case pb.UpdateRoleRequest_FIELD_MASK_TYPE:
 		r.Type = r2.Type
-		break
 	case pb.UpdateRoleRequest_FIELD_MASK_PRIORITY:
 		r.Priority = r2.Priority
-		break
 	case pb.UpdateRoleRequest_FIELD_MASK_TRANSIENCE:
 		r.Transient = r2.Transient
-		break
 	case pb.UpdateRoleRequest_FIELD_MASK_COLOR:
 		r.Color = r2.Color
-		break
 	case pb.UpdateRoleRequest_FIELD_MASK_PERMISSIONS:
 		r.Permissions = r2.Permissions
-		break
 	}
 }
 
