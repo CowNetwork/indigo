@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/cownetwork/indigo/internal/eventhandler"
 	"github.com/cownetwork/indigo/internal/psql"
 	"github.com/cownetwork/indigo/internal/rpc"
 	"github.com/cownetwork/mooapis-go/cow/indigo/v1"
@@ -10,16 +11,17 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
 	log.Println("Hello World!")
 
 	connUrl := &postgresql.ConnectionURL{
-		Host:     getEnvOrDefault("POSTGRES_URL", "localhost:5432"),
-		User:     getEnvOrDefault("POSTGRES_USER", "test"),
-		Password: getEnvOrDefault("POSTGRES_PASSWORD", "password"),
-		Database: getEnvOrDefault("POSTGRES_DB", "test_database"),
+		Host:     getEnvOrDefault("INDIGO_SERVICE_POSTGRES_URL", "localhost:5432"),
+		User:     getEnvOrDefault("INDIGO_SERVICE_POSTGRES_USER", "test"),
+		Password: getEnvOrDefault("INDIGO_SERVICE_POSTGRES_PASSWORD", "password"),
+		Database: getEnvOrDefault("INDIGO_SERVICE_POSTGRES_DB", "test_database"),
 	}
 
 	log.Printf("Connecting to PostgresSQL at %s ...", connUrl.Host)
@@ -31,6 +33,16 @@ func main() {
 	defer sess.Close()
 
 	log.Println("Connected to PostgresSQL.")
+
+	log.Printf("Connecting to cloudevents client ...")
+
+	eventhandler.Initialize(
+		getBrokersFromEnv(),
+		getEnvOrDefault("INDIGO_SERVICE_KAFKA_TOPIC", "cow.global.indigo"),
+		getEnvOrDefault("INDIGO_SERVICE_CLOUDEVENTS_SOURCE", "cow.global.indigo-service"),
+	)
+
+	log.Println("Connected to cloudevents client.")
 
 	// setup grpc server
 	address := fmt.Sprintf("%s:%s", getEnvOrDefault("INDIGO_SERVICE_HOST", ""), getEnvOrDefault("INDIGO_SERVICE_PORT", "6969"))
@@ -47,6 +59,11 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+}
+
+func getBrokersFromEnv() []string {
+	list := getEnvOrDefault("INDIGO_SERVICE_KAFKA_BROKERS", "127.0.0.1:9092")
+	return strings.Split(list, ",")
 }
 
 func getEnvOrDefault(env string, def string) string {

@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"github.com/cownetwork/indigo/internal/eventhandler"
 	"github.com/cownetwork/indigo/internal/perm"
 	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
 	"google.golang.org/grpc/codes"
@@ -17,6 +18,17 @@ func (serv IndigoServiceServer) AddRolePermissions(_ context.Context, req *pb.Ad
 		return nil, status.Error(codes.NotFound, "this role does not exists")
 	}
 
+	bindings, err := serv.Dao.GetRolePermissions(role.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get role permissions: %v", err)
+	}
+
+	permissions := make([]string, len(bindings))
+	for i, binding := range bindings {
+		permissions[i] = binding.Permission
+	}
+	role.Permissions = permissions
+
 	// only take those permissions that match the regex.
 	var perms []string
 	for _, permission := range req.Permissions {
@@ -29,6 +41,9 @@ func (serv IndigoServiceServer) AddRolePermissions(_ context.Context, req *pb.Ad
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not add permissions: %v", err)
 	}
+	role.AddPermissions(addedPerms)
+
+	eventhandler.SendRoleUpdateEvent(role.ToProtoRole(), pb.RoleUpdateEvent_ACTION_UPDATED)
 
 	return &pb.AddRolePermissionsResponse{
 		AddedPermissions: addedPerms,
@@ -44,10 +59,24 @@ func (serv IndigoServiceServer) RemoveRolePermissions(_ context.Context, req *pb
 		return nil, status.Error(codes.NotFound, "this role does not exists")
 	}
 
+	bindings, err := serv.Dao.GetRolePermissions(role.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get role permissions: %v", err)
+	}
+
+	permissions := make([]string, len(bindings))
+	for i, binding := range bindings {
+		permissions[i] = binding.Permission
+	}
+	role.Permissions = permissions
+
 	removedPerms, err := serv.Dao.RemoveRolePermissions(role.Id, req.Permissions)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not remove permissions: %v", err)
 	}
+	role.RemovePermissions(removedPerms)
+
+	eventhandler.SendRoleUpdateEvent(role.ToProtoRole(), pb.RoleUpdateEvent_ACTION_UPDATED)
 
 	return &pb.RemoveRolePermissionsResponse{
 		RemovedPermissions: removedPerms,

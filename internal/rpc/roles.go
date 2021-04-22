@@ -107,6 +107,7 @@ func (serv IndigoServiceServer) InsertRole(_ context.Context, req *pb.InsertRole
 }
 
 func (serv IndigoServiceServer) UpdateRole(_ context.Context, req *pb.UpdateRoleRequest) (*pb.UpdateRoleResponse, error) {
+	// TODO when UpdateRole: apply the permissions as well
 	err := serv.Dao.UpdateRole(req.RoleId, model.FromProtoRole(req.RoleData))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not update role: %v", err)
