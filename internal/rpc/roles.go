@@ -2,15 +2,14 @@ package rpc
 
 import (
 	"context"
+	"github.com/cownetwork/indigo/internal/eventhandler"
 	"github.com/cownetwork/indigo/internal/model"
 	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
 	"github.com/google/uuid"
+	"github.com/thoas/go-funk"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"regexp"
 )
-
-var snakeCaseRegex = regexp.MustCompile("^[a-z]+(_[a-z]+)*$")
 
 func (serv IndigoServiceServer) ListRoles(_ context.Context, req *pb.ListRolesRequest) (*pb.ListRolesResponse, error) {
 	roles, err := serv.Dao.ListRoles()
@@ -18,20 +17,18 @@ func (serv IndigoServiceServer) ListRoles(_ context.Context, req *pb.ListRolesRe
 		return nil, status.Errorf(codes.Internal, "could not list roles: %v", err)
 	}
 
-	var protoRoles []*pb.Role
 	for _, role := range roles {
-		protoRoles = append(protoRoles, role.ToProtoRole())
-	}
-
-	for _, role := range protoRoles {
 		perms, err := serv.Dao.GetRolePermissions(role.Id)
 		if err != nil {
 			continue
 		}
 
-		for _, perm := range perms {
-			role.Permissions = append(role.Permissions, perm.Permission)
-		}
+		role.SetPermissions(perms)
+	}
+
+	var protoRoles []*pb.Role
+	for _, role := range roles {
+		protoRoles = append(protoRoles, role.ToProtoRole())
 	}
 
 	return &pb.ListRolesResponse{
@@ -52,41 +49,26 @@ func (serv IndigoServiceServer) GetRole(_ context.Context, req *pb.GetRoleReques
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get role permissions: %v", err)
 	}
+	role.SetPermissions(bindings)
 
-	permissions := make([]string, len(bindings))
-	for i, binding := range bindings {
-		permissions[i] = binding.Permission
-	}
-
-	r := role.ToProtoRole()
-	r.Permissions = permissions
-
-	return &pb.GetRoleResponse{Role: r}, nil
+	return &pb.GetRoleResponse{
+		Role: role.ToProtoRole(),
+	}, nil
 }
 
 func (serv IndigoServiceServer) InsertRole(_ context.Context, req *pb.InsertRoleRequest) (*pb.InsertRoleResponse, error) {
-	n := req.Role.Name
-	t := req.Role.Type
-	if len(n) == 0 || len(t) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "name or type can not be empty.")
-	}
-	if !snakeCaseRegex.MatchString(n) || !snakeCaseRegex.MatchString(t) {
-		return nil, status.Error(codes.InvalidArgument, "name and type must be snake_case.")
-	}
-	if len(req.Role.Color) > 6 {
-		return nil, status.Error(codes.InvalidArgument, "role color length must be 6 or less.")
+	role := model.FromProtoRole(req.Role)
+
+	err := ValidateRole(role)
+	if err != nil {
+		return nil, err
 	}
 
-	role, err := serv.Dao.GetRole(&pb.RoleIdentifier{
-		Id: &pb.RoleIdentifier_NameId{NameId: &pb.RoleNameIdentifier{
-			Name: n,
-			Type: t,
-		}},
-	})
+	r, err := serv.Dao.GetRole(model.ToRoleNameIdentifier(role.Name, role.Type))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get role: %v", err)
 	}
-	if role != nil {
+	if r != nil {
 		return nil, status.Error(codes.AlreadyExists, "this role already exists")
 	}
 
@@ -94,35 +76,71 @@ func (serv IndigoServiceServer) InsertRole(_ context.Context, req *pb.InsertRole
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not generate uuid: %v", err)
 	}
-	req.Role.Id = roleUuid.String()
+	role.Id = roleUuid.String()
 
-	err = serv.Dao.InsertRole(model.FromProtoRole(req.Role))
+	err = serv.Dao.InsertRole(role)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not insert role: %v", err)
 	}
 
+	if len(req.Role.Permissions) > 0 {
+		_, err = serv.Dao.AddRolePermissions(role.Id, role.Permissions)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "could not initialize role permissions: %v", err)
+		}
+	}
+
+	pr := role.ToProtoRole()
+	eventhandler.SendRoleUpdateEvent(pr, pb.RoleUpdateEvent_ACTION_ADDED)
+
 	return &pb.InsertRoleResponse{
-		InsertedRole: req.Role,
+		InsertedRole: pr,
 	}, nil
 }
 
 func (serv IndigoServiceServer) UpdateRole(_ context.Context, req *pb.UpdateRoleRequest) (*pb.UpdateRoleResponse, error) {
-	// TODO when UpdateRole: apply the permissions as well
-	err := serv.Dao.UpdateRole(req.RoleId, model.FromProtoRole(req.RoleData))
+	role, err := serv.Dao.GetRole(req.RoleId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get role: %v", err)
+	}
+	if role == nil {
+		return nil, status.Errorf(codes.NotFound, "could not find role")
+	}
+
+	prevPerms := append([]string(nil), role.Permissions...)
+	for _, mask := range req.FieldMasks {
+		role.Merge(req.RoleData, mask)
+	}
+	removed, added := funk.DifferenceString(prevPerms, role.Permissions)
+
+	err = ValidateRole(role)
+	if err != nil {
+		return nil, err
+	}
+
+	err = serv.Dao.UpdateRole(req.RoleId, role)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not update role: %v", err)
 	}
 
-	role := req.RoleData
-	// if it is name+type, then the user may wanted to update
-	// the name, so we only set the uuid for them.
-	switch u := req.RoleId.Id.(type) {
-	case *pb.RoleIdentifier_Uuid:
-		role.Id = u.Uuid
+	if funk.Contains(req.FieldMasks, pb.UpdateRoleRequest_FIELD_MASK_ALL) ||
+		funk.Contains(req.FieldMasks, pb.UpdateRoleRequest_FIELD_MASK_PERMISSIONS) {
+		_, err = serv.Dao.AddRolePermissions(role.Id, added)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "could not update role permissions: %v", err)
+		}
+
+		_, err = serv.Dao.RemoveRolePermissions(role.Id, removed)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "could not update role permissions: %v", err)
+		}
 	}
 
+	r := role.ToProtoRole()
+	eventhandler.SendRoleUpdateEvent(r, pb.RoleUpdateEvent_ACTION_UPDATED)
+
 	return &pb.UpdateRoleResponse{
-		UpdatedRole: role,
+		UpdatedRole: r,
 	}, nil
 }
 
@@ -139,5 +157,8 @@ func (serv IndigoServiceServer) DeleteRole(_ context.Context, req *pb.DeleteRole
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not delete role: %v", err)
 	}
+
+	eventhandler.SendRoleUpdateEvent(role.ToProtoRole(), pb.RoleUpdateEvent_ACTION_DELETED)
+
 	return &pb.DeleteRoleResponse{}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/cownetwork/indigo/internal/eventhandler"
 	"github.com/cownetwork/indigo/internal/perm"
 	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
+	"github.com/thoas/go-funk"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,20 +23,12 @@ func (serv IndigoServiceServer) AddRolePermissions(_ context.Context, req *pb.Ad
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get role permissions: %v", err)
 	}
-
-	permissions := make([]string, len(bindings))
-	for i, binding := range bindings {
-		permissions[i] = binding.Permission
-	}
-	role.Permissions = permissions
+	role.SetPermissions(bindings)
 
 	// only take those permissions that match the regex.
-	var perms []string
-	for _, permission := range req.Permissions {
-		if perm.ValidatePermission(permission) {
-			perms = append(perms, permission)
-		}
-	}
+	perms := funk.FilterString(req.Permissions, func(s string) bool {
+		return perm.ValidatePermission(s)
+	})
 
 	addedPerms, err := serv.Dao.AddRolePermissions(role.Id, perms)
 	if err != nil {
@@ -63,12 +56,7 @@ func (serv IndigoServiceServer) RemoveRolePermissions(_ context.Context, req *pb
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get role permissions: %v", err)
 	}
-
-	permissions := make([]string, len(bindings))
-	for i, binding := range bindings {
-		permissions[i] = binding.Permission
-	}
-	role.Permissions = permissions
+	role.SetPermissions(bindings)
 
 	removedPerms, err := serv.Dao.RemoveRolePermissions(role.Id, req.Permissions)
 	if err != nil {

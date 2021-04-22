@@ -39,6 +39,13 @@ func (r *Role) ToProtoRole() *pb.Role {
 	}
 }
 
+func (r *Role) SetPermissions(perms []*RolePermissionBinding) {
+	r.Permissions = []string{}
+	for _, perm := range perms {
+		r.Permissions = append(r.Permissions, perm.Permission)
+	}
+}
+
 func (r *Role) AddPermissions(perms []string) {
 	for _, perm := range perms {
 		r.Permissions = append(r.Permissions, perm)
@@ -47,6 +54,33 @@ func (r *Role) AddPermissions(perms []string) {
 
 func (r *Role) RemovePermissions(perms []string) {
 	r.Permissions = funk.SubtractString(r.Permissions, perms)
+}
+
+func (r *Role) Merge(r2 *pb.Role, fm pb.UpdateRoleRequest_FieldMask) {
+	switch fm {
+	case pb.UpdateRoleRequest_FIELD_MASK_ALL:
+	case pb.UpdateRoleRequest_FIELD_MASK_ALL_PROPERTIES:
+
+		break
+	case pb.UpdateRoleRequest_FIELD_MASK_NAME:
+		r.Name = r2.Name
+		break
+	case pb.UpdateRoleRequest_FIELD_MASK_TYPE:
+		r.Type = r2.Type
+		break
+	case pb.UpdateRoleRequest_FIELD_MASK_PRIORITY:
+		r.Priority = r2.Priority
+		break
+	case pb.UpdateRoleRequest_FIELD_MASK_TRANSIENCE:
+		r.Transient = r2.Transient
+		break
+	case pb.UpdateRoleRequest_FIELD_MASK_COLOR:
+		r.Color = r2.Color
+		break
+	case pb.UpdateRoleRequest_FIELD_MASK_PERMISSIONS:
+		r.Permissions = r2.Permissions
+		break
+	}
 }
 
 type RolePermissionBinding struct {
@@ -64,10 +98,19 @@ type UserPermissionBinding struct {
 	Permission    string `db:"permission"`
 }
 
-func IdToRoleIdentifier(roleId string) *pb.RoleIdentifier {
+func ToRoleUuidIdentifier(roleId string) *pb.RoleIdentifier {
 	return &pb.RoleIdentifier{
 		Id: &pb.RoleIdentifier_Uuid{
 			Uuid: roleId,
 		},
+	}
+}
+
+func ToRoleNameIdentifier(name string, t string) *pb.RoleIdentifier {
+	return &pb.RoleIdentifier{
+		Id: &pb.RoleIdentifier_NameId{NameId: &pb.RoleNameIdentifier{
+			Name: name,
+			Type: t,
+		}},
 	}
 }

@@ -18,7 +18,7 @@ var (
 	sourceUri string
 )
 
-func Initialize(brokers []string, topic string, source string) {
+func Initialize(brokers []string, topic string, source string) (*kafka_sarama.Sender, error) {
 	sourceUri = source
 
 	saramaConfig := sarama.NewConfig()
@@ -26,33 +26,40 @@ func Initialize(brokers []string, topic string, source string) {
 
 	sender, err := kafka_sarama.NewSender(brokers, saramaConfig, topic)
 	if err != nil {
-		log.Fatalf("failed to create protocol: %s", err.Error())
+		return nil, err
 	}
-	defer sender.Close(context.Background())
 
 	c, err := cloudevents.NewClient(sender, cloudevents.WithTimeNow(), cloudevents.WithUUIDs())
 	if err != nil {
-		log.Fatalf("failed to create client, %v", err)
+		return nil, err
 	}
 
 	client = c
+	return sender, nil
 }
 
 func SendEvent(etype string, message proto.Message) error {
 	event := cloudevents.NewEvent()
-	event.SetID(uuid.New().String())
+
+	uid, err := uuid.NewUUID()
+	if err != nil {
+		return err
+	}
+
+	event.SetID(uid.String())
 	event.SetSource(sourceUri)
 	event.SetType(etype)
 
-	data, err := proto.Marshal(message)
+	err = event.SetData(cloudevents.ApplicationJSON, message)
 	if err != nil {
 		return err
 	}
 
-	err = event.SetData(cloudevents.ApplicationJSON, data)
-	if err != nil {
-		return err
-	}
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic while sending CloudEvent %v: %v", message, r)
+		}
+	}()
 
 	if result := client.Send(
 		// Set the producer message key
@@ -69,6 +76,7 @@ func SendRoleUpdateEvent(role *pb.Role, action pb.RoleUpdateEvent_Action) {
 		Role:   role,
 		Action: action,
 	})
+
 	if err != nil {
 		log.Printf("Could not send cloudevent: %v", err)
 	}

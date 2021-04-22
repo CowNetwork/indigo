@@ -26,7 +26,7 @@ func (serv IndigoServiceServer) GetUserRoles(_ context.Context, req *pb.GetUserR
 func UserRoleBindingsToProtoRoles(da dao.DataAccessor, roleBindings []*model.UserRoleBinding) []*pb.Role {
 	var protoRoles []*pb.Role
 	for _, binding := range roleBindings {
-		role, err := da.GetRole(model.IdToRoleIdentifier(binding.RoleId))
+		role, err := da.GetRole(model.ToRoleUuidIdentifier(binding.RoleId))
 		if err != nil || role == nil {
 			continue
 		}

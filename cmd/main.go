@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/cownetwork/indigo/internal/eventhandler"
 	"github.com/cownetwork/indigo/internal/psql"
@@ -34,15 +35,20 @@ func main() {
 
 	log.Println("Connected to PostgresSQL.")
 
-	log.Printf("Connecting to cloudevents client ...")
+	log.Printf("Initialize CloudEvents ...")
 
-	eventhandler.Initialize(
+	sender, err := eventhandler.Initialize(
 		getBrokersFromEnv(),
 		getEnvOrDefault("INDIGO_SERVICE_KAFKA_TOPIC", "cow.global.indigo"),
 		getEnvOrDefault("INDIGO_SERVICE_CLOUDEVENTS_SOURCE", "cow.global.indigo-service"),
 	)
+	if err != nil {
+		log.Fatalf("failed to initialize cloudevents: %v", err)
+	}
 
-	log.Println("Connected to cloudevents client.")
+	defer sender.Close(context.Background())
+
+	log.Println("CloudEvents initialized.")
 
 	// setup grpc server
 	address := fmt.Sprintf("%s:%s", getEnvOrDefault("INDIGO_SERVICE_HOST", ""), getEnvOrDefault("INDIGO_SERVICE_PORT", "6969"))
