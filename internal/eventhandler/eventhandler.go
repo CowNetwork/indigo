@@ -50,7 +50,12 @@ func SendEvent(etype string, message proto.Message) error {
 	event.SetSource(sourceUri)
 	event.SetType(etype)
 
-	err = event.SetData(cloudevents.ApplicationJSON, message)
+	data, err := proto.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	err = event.SetData("application/protobuf", data)
 	if err != nil {
 		return err
 	}
