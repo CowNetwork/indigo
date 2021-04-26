@@ -10,7 +10,7 @@ type DataAccessor interface {
 	InsertRole(role *model.Role) error
 	UpdateRole(roleId *pb.RoleIdentifier, role *model.Role) error
 	GetRole(roleId *pb.RoleIdentifier) (*model.Role, error)
-	DeleteRole(roleId *pb.RoleIdentifier) error
+	DeleteRole(roleId string) error
 	GetRolePermissions(roleId string) ([]*model.RolePermissionBinding, error)
 	AddRolePermissions(roleId string, permissions []string) ([]string, error)
 	RemoveRolePermissions(roleId string, permissions []string) ([]string, error)

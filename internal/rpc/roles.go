@@ -107,6 +107,12 @@ func (serv IndigoServiceServer) UpdateRole(_ context.Context, req *pb.UpdateRole
 		return nil, status.Errorf(codes.NotFound, "could not find role")
 	}
 
+	bindings, err := serv.Dao.GetRolePermissions(role.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get role permissions: %v", err)
+	}
+	role.SetPermissions(bindings)
+
 	prevPerms := append([]string(nil), role.Permissions...)
 	for _, mask := range req.FieldMasks {
 		role.Merge(req.RoleData, mask)
@@ -153,7 +159,7 @@ func (serv IndigoServiceServer) DeleteRole(_ context.Context, req *pb.DeleteRole
 		return nil, status.Error(codes.NotFound, "this role does not exists")
 	}
 
-	err = serv.Dao.DeleteRole(req.RoleId)
+	err = serv.Dao.DeleteRole(role.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not delete role: %v", err)
 	}

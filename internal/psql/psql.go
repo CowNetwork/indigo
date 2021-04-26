@@ -76,29 +76,26 @@ func (d *DataAccessor) GetRole(roleId *pb.RoleIdentifier) (*model.Role, error) {
 	return &role, err
 }
 
-func (d *DataAccessor) DeleteRole(roleId *pb.RoleIdentifier) error {
-	coll := d.Session.Collection("role_definitions")
-
-	var err error
-	switch u := roleId.Id.(type) {
-	case *pb.RoleIdentifier_Uuid:
-		err = coll.Find("id", u.Uuid).Delete()
-	case *pb.RoleIdentifier_NameId:
-		err = coll.Find("name", u.NameId.Name).And("type", u.NameId.Type).Delete()
-	}
-
-	if err != nil {
-		return err
-	}
-
-	coll = d.Session.Collection("user_roles")
-	err = coll.Find("role_id", roleId).Delete()
+func (d *DataAccessor) DeleteRole(roleId string) error {
+	coll := d.Session.Collection("user_roles")
+	err := coll.Find("role_id", roleId).Delete()
 	if err != nil {
 		return err
 	}
 
 	coll = d.Session.Collection("role_permissions")
-	return coll.Find("role_id", roleId).Delete()
+	err = coll.Find("role_id", roleId).Delete()
+	if err != nil {
+		return err
+	}
+
+	coll = d.Session.Collection("role_definitions")
+	err = coll.Find("id", roleId).Delete()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d *DataAccessor) GetRolePermissions(roleId string) ([]*model.RolePermissionBinding, error) {

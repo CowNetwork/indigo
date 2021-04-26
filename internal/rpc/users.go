@@ -55,16 +55,27 @@ func (serv IndigoServiceServer) HasPermission(_ context.Context, req *pb.HasPerm
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not get user permission bindings: %v", err)
 	}
+
+	var prevPrio int32
+	v := perm.NewValidator([]string{})
 	for _, binding := range roleBindings {
+		r, err := serv.Dao.GetRole(model.ToRoleUuidIdentifier(binding.RoleId))
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "could not get role: %v", err)
+		}
+
 		b, err := serv.Dao.GetRolePermissions(binding.RoleId)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "could not get role permissions: %v", err)
 		}
 
-		// TODO logic for overriding permissions with layering the roles
+		var rolePerms []string
 		for _, permissionBinding := range b {
-			permBindings = append(permBindings, &model.UserPermissionBinding{Permission: permissionBinding.Permission})
+			rolePerms = append(rolePerms, permissionBinding.Permission)
 		}
+
+		v.Append(rolePerms, prevPrio < r.Priority)
+		prevPrio = r.Priority
 	}
 
 	var perms []string

@@ -1,7 +1,7 @@
 package perm
 
 import (
-	"fmt"
+	"github.com/thoas/go-funk"
 	"regexp"
 	"strings"
 )
@@ -39,19 +39,51 @@ type Validator struct {
 }
 
 func NewValidator(perms []string) *Validator {
-	// TODO sort perms by range and negative permissions
-	// TODO compact perms when permission A overlap/negate B
-	regexs := make(map[string]*regexp.Regexp, len(perms))
-	for _, perm := range perms {
-		r, err := GetPermissionRegex(perm)
-		if err == nil {
-			regexs[perm] = r
+	v := &Validator{
+		perms:  []string{},
+		regexs: map[string]*regexp.Regexp{},
+	}
+	v.AppendSimple(perms)
+	return v
+}
+
+func (v *Validator) Append(perms []string, superior bool) {
+	if !superior {
+		for _, perm := range perms {
+			r, err := GetPermissionRegex(perm)
+			if err != nil {
+				continue
+			}
+
+			v.regexs[perm] = r
+			v.perms = append(v.perms, perm)
+		}
+		return
+	}
+
+	v2 := NewValidator(perms)
+	var toRemove []string
+	for p, _ := range v.regexs {
+		neg := strings.HasPrefix(p, "-")
+
+		if neg && v2.ValidateRaw(strings.Replace(p, "-", "", 1)) {
+			toRemove = append(toRemove, p)
+		} else if !neg && v2.ValidateRaw("-"+p) {
+			toRemove = append(toRemove, p)
 		}
 	}
-	return &Validator{
-		perms:  perms,
-		regexs: regexs,
+
+	// remove from perms and regexes
+	for _, s := range toRemove {
+		delete(v.regexs, s)
 	}
+	v.perms = funk.SubtractString(v.perms, toRemove)
+
+	v.Append(v2.perms, false)
+}
+
+func (v *Validator) AppendSimple(perms []string) {
+	v.Append(perms, false)
 }
 
 func (v *Validator) Validate(perm string) bool {
@@ -59,11 +91,28 @@ func (v *Validator) Validate(perm string) bool {
 		return false
 	}
 
+	// check for negatives
+	if !v.ValidateRaw("-" + perm) {
+		return false
+	}
+	return v.ValidateRaw(perm)
+}
+
+func (v *Validator) ValidateRaw(perm string) bool {
+	if !ValidatePermission(perm) {
+		return false
+	}
+
 	for _, regex := range v.regexs {
-		fmt.Println("Check "+perm+" with regex", regex)
 		if regex.MatchString(perm) {
 			return true
 		}
 	}
 	return false
+}
+
+func (v *Validator) GetPermissions() []string {
+	tmp := make([]string, len(v.perms))
+	copy(tmp, v.perms)
+	return tmp
 }
