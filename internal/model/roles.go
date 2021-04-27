@@ -85,16 +85,6 @@ type RolePermissionBinding struct {
 	Permission string `db:"permission"`
 }
 
-type UserRoleBinding struct {
-	UserAccountId string `db:"user_account_id"`
-	RoleId        string `db:"role_id"`
-}
-
-type UserPermissionBinding struct {
-	UserAccountId string `db:"user_account_id"`
-	Permission    string `db:"permission"`
-}
-
 func ToRoleUuidIdentifier(roleId string) *pb.RoleIdentifier {
 	return &pb.RoleIdentifier{
 		Id: &pb.RoleIdentifier_Uuid{

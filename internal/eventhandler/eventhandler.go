@@ -86,3 +86,14 @@ func SendRoleUpdateEvent(role *pb.Role, action pb.RoleUpdateEvent_Action) {
 		log.Printf("Could not send cloudevent: %v", err)
 	}
 }
+
+func SendUserPermUpdateEvent(user *pb.User, action pb.UserPermissionUpdateEvent_Action) {
+	err := SendEvent("cow.indigo.v1.UserPermissionUpdateEvent", &pb.UserPermissionUpdateEvent{
+		User:   user,
+		Action: action,
+	})
+
+	if err != nil {
+		log.Printf("Could not send cloudevent: %v", err)
+	}
+}

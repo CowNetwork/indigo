@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/cownetwork/indigo/internal/dao"
+	"github.com/cownetwork/indigo/internal/eventhandler"
 	"github.com/cownetwork/indigo/internal/model"
 	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
 	"google.golang.org/grpc/codes"
@@ -21,22 +22,14 @@ func (serv IndigoServiceServer) GetUserRoles(_ context.Context, req *pb.GetUserR
 	}, nil
 }
 
-// UserRoleBindingsToProtoRoles fetches a role for
-// every binding and that way fills in the permissions as well.
-func UserRoleBindingsToProtoRoles(da dao.DataAccessor, roleBindings []*model.UserRoleBinding) []*pb.Role {
-	var protoRoles []*pb.Role
-	for _, binding := range roleBindings {
-		role, err := da.GetRole(model.ToRoleUuidIdentifier(binding.RoleId))
-		if err != nil || role == nil {
-			continue
-		}
-
-		protoRoles = append(protoRoles, role.ToProtoRole())
-	}
-	return protoRoles
-}
-
 func (serv IndigoServiceServer) AddUserRoles(_ context.Context, req *pb.AddUserRolesRequest) (*pb.AddUserRolesResponse, error) {
+	user := model.NewUser(req.UserAccountId)
+	roleBindings, err := serv.Dao.GetUserRoleBindings(req.UserAccountId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get user roles bindings: %v", err)
+	}
+	user.SetRoles(roleBindings)
+
 	var roleIds []string
 	for _, id := range req.RoleIds {
 		r, err := serv.Dao.GetRole(id)
@@ -53,6 +46,9 @@ func (serv IndigoServiceServer) AddUserRoles(_ context.Context, req *pb.AddUserR
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not add user roles: %v", err)
 	}
+	user.AddRoles(addedRoles)
+
+	eventhandler.SendUserPermUpdateEvent(user.ToProtoUser(), pb.UserPermissionUpdateEvent_ACTION_ROLE_ADDED)
 
 	return &pb.AddUserRolesResponse{
 		AddedRoleIds: addedRoles,
@@ -60,6 +56,13 @@ func (serv IndigoServiceServer) AddUserRoles(_ context.Context, req *pb.AddUserR
 }
 
 func (serv IndigoServiceServer) RemoveUserRoles(_ context.Context, req *pb.RemoveUserRolesRequest) (*pb.RemoveUserRolesResponse, error) {
+	user := model.NewUser(req.UserAccountId)
+	roleBindings, err := serv.Dao.GetUserRoleBindings(req.UserAccountId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get user roles bindings: %v", err)
+	}
+	user.SetRoles(roleBindings)
+
 	var roleIds []string
 	for _, id := range req.RoleIds {
 		r, err := serv.Dao.GetRole(id)
@@ -76,8 +79,26 @@ func (serv IndigoServiceServer) RemoveUserRoles(_ context.Context, req *pb.Remov
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not add user roles: %v", err)
 	}
+	user.RemoveRoles(removedRoles)
+
+	eventhandler.SendUserPermUpdateEvent(user.ToProtoUser(), pb.UserPermissionUpdateEvent_ACTION_ROLE_REMOVED)
 
 	return &pb.RemoveUserRolesResponse{
 		RemovedRoleIds: removedRoles,
 	}, nil
+}
+
+// UserRoleBindingsToProtoRoles fetches a role for
+// every binding and that way fills in the permissions as well.
+func UserRoleBindingsToProtoRoles(da dao.DataAccessor, roleBindings []*model.UserRoleBinding) []*pb.Role {
+	var protoRoles []*pb.Role
+	for _, binding := range roleBindings {
+		role, err := da.GetRole(model.ToRoleUuidIdentifier(binding.RoleId))
+		if err != nil || role == nil {
+			continue
+		}
+
+		protoRoles = append(protoRoles, role.ToProtoRole())
+	}
+	return protoRoles
 }
