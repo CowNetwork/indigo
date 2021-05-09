@@ -10,9 +10,9 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o app ./cmd/server/main.go
+RUN go build -o app ./cmd/main.go
 
-FROM alpine:3.13
+FROM gcr.io/distroless/base
 
 COPY --from=builder ./out/app .
 

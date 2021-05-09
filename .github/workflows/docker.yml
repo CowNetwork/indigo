@@ -1,0 +1,26 @@
+name: Docker
+on:
+  release:
+    types: [created]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: docker/setup-buildx-action@v1
+      - name: set tag
+        id: tag
+        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+      - name: login
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+      - name: build and push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          build-args: |
+            version=${{ steps.tag.outputs.tag }}
+          tags: ghcr.io/cownetwork/indigo:${{ steps.tag.outputs.tag }},ghcr.io/cownetwork/indigo:latest
