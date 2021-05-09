@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  indigo:
+    image: ghcr.io/cownetwork/indigo:latest
+    environment:
+      INDIGO_SERVICE_POSTGRES_URL: indigo_postgres:5432
+      INDIGO_SERVICE_POSTGRES_USER: test
+      INDIGO_SERVICE_POSTGRES_PASSWORD: password
+      INDIGO_SERVICE_POSTGRES_DB: test_database
+      INDIGO_SERVICE_PORT: 6969
+      INDIGO_SERVICE_KAFKA_BROKERS: indigo_kafka:9092
+    ports:
+      - "6969:6969"
+    depends_on:
+      - database
+      - kafka
+    restart: on-failure:5
+  database:
+    image: postgres:13.2-alpine
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: test_database
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data/
+    container_name: indigo_postgres
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
+    container_name: indigo_kafka
+volumes:
+  dbdata:
