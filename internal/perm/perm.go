@@ -63,7 +63,7 @@ func (v *Validator) Append(perms []string, superior bool) {
 
 	v2 := NewValidator(perms)
 	var toRemove []string
-	for p, _ := range v.regexs {
+	for p := range v.regexs {
 		neg := strings.HasPrefix(p, "-")
 
 		if neg && v2.ValidateRaw(strings.Replace(p, "-", "", 1)) {
