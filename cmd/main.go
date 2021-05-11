@@ -24,7 +24,7 @@ func main() {
 		Password: getEnvOrDefault("INDIGO_SERVICE_POSTGRES_PASSWORD", "password"),
 		Database: getEnvOrDefault("INDIGO_SERVICE_POSTGRES_DB", "test_database"),
 		Options: map[string]string{
-			"search_path": getEnvOrDefault("INDIGO_SERVICE_POSTGRES_SCHEMA", "cock"),
+			"search_path": getEnvOrDefault("INDIGO_SERVICE_POSTGRES_SCHEMA", "public"),
 		},
 	}
 
