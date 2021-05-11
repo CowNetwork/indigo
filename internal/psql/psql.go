@@ -2,7 +2,6 @@ package psql
 
 import (
 	"errors"
-	"fmt"
 	"github.com/cownetwork/indigo/internal/model"
 	pb "github.com/cownetwork/mooapis-go/cow/indigo/v1"
 	"github.com/upper/db/v4"
@@ -24,12 +23,9 @@ func (d *DataAccessor) ListRoles() ([]*model.Role, error) {
 func (d *DataAccessor) InsertRole(role *model.Role) error {
 	coll := d.Session.Collection("role_definitions")
 
-	res, err := coll.Insert(role)
+	_, err := coll.Insert(role)
 	if err != nil {
 		return err
-	}
-	if res.ID() == nil {
-		return fmt.Errorf("no psql id found after insertion of role %v", role.Id)
 	}
 	return nil
 }
@@ -122,8 +118,8 @@ func (d *DataAccessor) AddRolePermissions(roleId string, permissions []string) (
 			continue
 		}
 
-		res, err := coll.Insert(&binding)
-		if err == nil && res.ID() != nil {
+		_, err := coll.Insert(&binding)
+		if err == nil {
 			addedPerms = append(addedPerms, perm)
 		}
 	}
@@ -174,8 +170,8 @@ func (d *DataAccessor) AddUserRoles(userAccountId string, roleIds []string) ([]s
 			continue
 		}
 
-		res, err := coll.Insert(binding)
-		if err == nil && res.ID() != nil {
+		_, err := coll.Insert(binding)
+		if err == nil {
 			addedRoles = append(addedRoles, id)
 		}
 	}
