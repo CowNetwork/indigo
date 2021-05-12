@@ -184,7 +184,7 @@ func (d *DataAccessor) RemoveUserRoles(userAccountId string, roleIds []string) (
 	var removedRoles []string
 	for _, id := range roleIds {
 		exists, _ := coll.Find("user_account_id", userAccountId).And("role_id", id).Exists()
-		if exists {
+		if !exists {
 			continue
 		}
 
